@@ -38,7 +38,11 @@ func tallyEventsHistory(
 		}
 	}
 
-	curStatsInterval := time.Since(eventsInWindow[0].At)
+	var curStatsInterval time.Duration
+
+	if len(eventsInWindow) > 0 {
+		curStatsInterval = time.Since(eventsInWindow[0].At)
+	}
 
 	return totalStats, len(eventsInWindow), curStatsInterval
 }
