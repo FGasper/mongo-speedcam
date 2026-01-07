@@ -13,7 +13,6 @@ import (
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func _runChangeStream(ctx context.Context, connstr string, interval time.Duration) error {
@@ -46,8 +45,8 @@ func _runChangeStream(ctx context.Context, connstr string, interval time.Duratio
 			{"pipeline", mongo.Pipeline{
 				{{"$changeStream", bson.D{
 					{"allChangesForCluster", true},
-					{"showSystemEvents", true},
-					{"showExpandedEvents", true},
+					//{"showSystemEvents", true},
+					//{"showExpandedEvents", true},
 					{"startAtOperationTime", startTS},
 				}}},
 				{{"$match", bson.D{
@@ -55,8 +54,10 @@ func _runChangeStream(ctx context.Context, connstr string, interval time.Duratio
 						{"$lte", bson.Timestamp{T: uint32(time.Now().Unix())}},
 					}},
 				}}},
-				{{"$addFields", bson.D{
-					{"operationType", "$$REMOVE"},
+				{{"$project", bson.D{
+					{"_id", 1},
+					{"clusterTime", 1},
+
 					{"op", bson.D{{"$cond", bson.D{
 						{"if", bson.D{{"$in", [2]any{
 							"$operationType",
@@ -67,13 +68,8 @@ func _runChangeStream(ctx context.Context, connstr string, interval time.Duratio
 						}}},
 						{"else", "$operationType"},
 					}}}},
+
 					{"size", bson.D{{"$bsonSize", "$$ROOT"}}},
-				}}},
-				{{"$project", bson.D{
-					{"_id", 1},
-					{"op", 1},
-					{"size", 1},
-					{"clusterTime", 1},
 				}}},
 			}},
 		},
@@ -180,11 +176,6 @@ func _runChangeStreamLoop(
 				{"size", agg.BSONSize("$$ROOT")},
 			}}},
 		},
-		options.ChangeStream().
-			SetCustomPipeline(bson.M{
-				"showSystemEvents":   true,
-				"showExpandedEvents": true,
-			}),
 	)
 	if err != nil {
 		return fmt.Errorf("opening change stream: %w", err)
@@ -203,9 +194,13 @@ func _runChangeStreamLoop(
 
 			totalStats, _, curStatsInterval := tallyEventsHistory(eventsHistory)
 
-			displayTable(totalStats.counts, totalStats.sizes, curStatsInterval)
+			if curStatsInterval == 0 {
+				fmt.Printf("(Can’t compute change stream lag with no interval …)\n")
+			} else {
+				displayTable(totalStats.counts, totalStats.sizes, curStatsInterval)
 
-			fmt.Printf("Change stream lag: %s\n", lo.FromPtr(changeStreamLag.Load()))
+				fmt.Printf("Change stream lag: %s\n", lo.FromPtr(changeStreamLag.Load()))
+			}
 		}
 	}()
 
