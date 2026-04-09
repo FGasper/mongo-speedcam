@@ -8,6 +8,11 @@ go build
 ```
 Then type `./mongo-speedcam --help`.
 
+Or, to avoid the build step, do:
+```
+go run . --help
+```
+
 ## Oplog Mode
 
 In its simplest form, this tool queries the oplog then prints a report, thus:
