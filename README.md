@@ -41,9 +41,9 @@ this program.
 ### Tailing
 
 You can also gauge write load by tailing the oplog. This depends in part on
-connection speed (because), unlike when aggregating the oplog, here this
+connection speed because, unlike when aggregating the oplog, here this
 program tallies the oplog entries it receives. There is filtering to optimize
-the process, but a slow connection may not keep pace regardless.
+the process, but a slow connection may still struggle.
 
 Because of this issue, a `Lag` is printed with each report in this mode.
 
