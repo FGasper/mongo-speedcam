@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -166,7 +167,7 @@ func _runTailOplogMode(
 			{"awaitData", true},
 			{"projection", bson.D{
 				// for debugging:
-				//{"ns", 1},
+				{"ns", 1},
 				//{"o", 1},
 
 				{"ts", 1},
@@ -203,7 +204,8 @@ func _runTailOplogMode(
 
 	fmt.Printf("Listening for oplog events. Stats showing every %s …\n\n", reportInterval)
 
-	eventsHistory := history.New[eventStats](window)
+	prodEventsHistory := history.New[eventStats](window)
+	mdbEventsHistory := history.New[eventStats](window)
 
 	var lag atomic.Pointer[time.Duration]
 
@@ -215,9 +217,24 @@ func _runTailOplogMode(
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				totalStats, _, curStatsInterval := tallyEventsHistory(eventsHistory)
+				showedMDBInternal := false
 
+				totalStats, _, curStatsInterval := tallyEventsHistory(mdbEventsHistory)
+				if len(totalStats.counts) > 0 {
+					fmt.Printf("__mdb_internal stats:\n")
+					displayTable(totalStats.counts, totalStats.sizes, curStatsInterval)
+					fmt.Printf("\n")
+
+					showedMDBInternal = true
+				}
+
+				if showedMDBInternal {
+					fmt.Printf("Production stats:\n")
+				}
+
+				totalStats, _, curStatsInterval = tallyEventsHistory(prodEventsHistory)
 				displayTable(totalStats.counts, totalStats.sizes, curStatsInterval)
+
 				fmt.Printf("Lag: %s\n\n", lo.FromPtr(lag.Load()))
 			}
 		}
@@ -226,9 +243,13 @@ func _runTailOplogMode(
 	for !cursor.IsFinished() {
 		batch := cursor.GetCurrentBatch()
 
-		curEventStats := eventStats{}
-		initMap(&curEventStats.counts)
-		initMap(&curEventStats.sizes)
+		curProdEventStats := eventStats{}
+		initMap(&curProdEventStats.counts)
+		initMap(&curProdEventStats.sizes)
+
+		curMDBEventStats := eventStats{}
+		initMap(&curMDBEventStats.counts)
+		initMap(&curMDBEventStats.sizes)
 
 		for i, op := range batch {
 			opType := mustExtract[string](op, "op")
@@ -238,17 +259,24 @@ func _runTailOplogMode(
 				ops := mustExtract[[]bson.Raw](op, "ops")
 
 				for _, subOp := range ops {
+					ns := mustExtract[string](subOp, "ns")
+					curStats := lo.Ternary(nsIsInternal(ns), &curMDBEventStats, &curProdEventStats)
+
 					subOpType := mustExtract[string](subOp, "op")
 					opType := "applyOps." + subOpType
-					curEventStats.counts[opType]++
-					curEventStats.sizes[opType] += mustExtract[int](subOp, "size")
+					curStats.counts[opType]++
+					curStats.sizes[opType] += mustExtract[int](subOp, "size")
 				}
 			case "n":
 				// There is nothing to count; this is just here so that
 				// reported lag doesn’t balloon in the event of quiesced writes.
 			default:
-				curEventStats.counts[opType]++
-				curEventStats.sizes[opType] += mustExtract[int](op, "size")
+				ns := mustExtract[string](op, "ns")
+
+				curStats := lo.Ternary(nsIsInternal(ns), &curMDBEventStats, &curProdEventStats)
+
+				curStats.counts[opType]++
+				curStats.sizes[opType] += mustExtract[int](op, "size")
 			}
 
 			if i == len(batch)-1 {
@@ -263,7 +291,8 @@ func _runTailOplogMode(
 			}
 		}
 
-		eventsHistory.Add(curEventStats)
+		prodEventsHistory.Add(curProdEventStats)
+		mdbEventsHistory.Add(curMDBEventStats)
 
 		if err := cursor.GetNext(ctx); err != nil {
 			return fmt.Errorf("reading oplog: %w", err)
@@ -271,6 +300,13 @@ func _runTailOplogMode(
 	}
 
 	panic("cursor should never finish!")
+}
+
+func nsIsInternal(ns string) bool {
+	return strings.HasPrefix(ns, "config.") ||
+		strings.HasPrefix(ns, "admin.") ||
+		strings.HasPrefix(ns, "local.") ||
+		strings.HasPrefix(ns, "__mdb_internal")
 }
 
 func _runOplogMode(ctx context.Context, connstr string, interval time.Duration) error {

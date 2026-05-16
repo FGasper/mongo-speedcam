@@ -139,14 +139,17 @@ type Filter struct {
 var _ bson.Marshaler = Filter{}
 
 func (f Filter) D() bson.D {
-	return bson.D{
-		{"$filter", bson.D{
-			{"input", f.Input},
-			{"as", f.As},
-			{"cond", f.Cond},
-			{"limit", f.Limit},
-		}},
+	spec := bson.D{
+		{"input", f.Input},
+		{"as", f.As},
+		{"cond", f.Cond},
 	}
+
+	if f.Limit != nil {
+		spec = append(spec, bson.E{"limit", f.Limit})
+	}
+
+	return bson.D{{"$filter", spec}}
 }
 
 func (f Filter) MarshalBSON() ([]byte, error) {
