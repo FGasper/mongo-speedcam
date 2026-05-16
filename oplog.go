@@ -221,7 +221,7 @@ func _runTailOplogMode(
 
 				totalStats, _, curStatsInterval := tallyEventsHistory(mdbEventsHistory)
 				if len(totalStats.counts) > 0 {
-					fmt.Printf("__mdb_internal stats:\n")
+					fmt.Printf("DB-internal:\n")
 					displayTable(totalStats.counts, totalStats.sizes, curStatsInterval)
 					fmt.Printf("\n")
 
@@ -229,7 +229,7 @@ func _runTailOplogMode(
 				}
 
 				if showedMDBInternal {
-					fmt.Printf("Production stats:\n")
+					fmt.Printf("Production:\n")
 				}
 
 				totalStats, _, curStatsInterval = tallyEventsHistory(prodEventsHistory)
