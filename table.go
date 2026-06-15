@@ -32,7 +32,7 @@ func displayTable(
 	fmt.Print("\n")
 
 	fmt.Printf(
-		"%s ops/sec (%s/sec; avg: %s)\n",
+		"Received %s ops/sec (%s/sec; avg: %s)\n",
 		FmtReal((mmmath.DivideToF64(allEventsCount, delta.Seconds()))),
 		FmtBytes(mmmath.DivideToF64(totalSize, delta.Seconds())),
 		FmtBytes(mmmath.DivideToF64(totalSize, allEventsCount)),

@@ -167,8 +167,9 @@ func _runTailOplogMode(
 			{"awaitData", true},
 			{"projection", bson.D{
 				// for debugging:
-				{"ns", 1},
 				//{"o", 1},
+
+				{"ns", 1},
 
 				{"ts", 1},
 
@@ -186,6 +187,7 @@ func _runTailOplogMode(
 						Input: "$o.applyOps",
 						As:    "opEntry",
 						In: bson.D{
+							{"ns", "$$opEntry.ns"},
 							{"op", makeSuffixedOpFieldExpr("$$opEntry")},
 							{"size", agg.BSONSize("$$opEntry")},
 						},
@@ -219,10 +221,10 @@ func _runTailOplogMode(
 			case <-ticker.C:
 				showedMDBInternal := false
 
-				totalStats, _, curStatsInterval := tallyEventsHistory(mdbEventsHistory)
+				totalStats, _, _ := tallyEventsHistory(mdbEventsHistory)
 				if len(totalStats.counts) > 0 {
 					fmt.Printf("DB-internal:\n")
-					displayTable(totalStats.counts, totalStats.sizes, curStatsInterval)
+					displayTable(totalStats.counts, totalStats.sizes, window)
 					fmt.Printf("\n")
 
 					showedMDBInternal = true
@@ -232,8 +234,8 @@ func _runTailOplogMode(
 					fmt.Printf("Production:\n")
 				}
 
-				totalStats, _, curStatsInterval = tallyEventsHistory(prodEventsHistory)
-				displayTable(totalStats.counts, totalStats.sizes, curStatsInterval)
+				totalStats, _, _ = tallyEventsHistory(prodEventsHistory)
+				displayTable(totalStats.counts, totalStats.sizes, window)
 
 				fmt.Printf("Lag: %s\n\n", lo.FromPtr(lag.Load()))
 			}

@@ -10,9 +10,11 @@ import (
 	"github.com/FGasper/mongo-speedcam/cursor"
 	"github.com/FGasper/mongo-speedcam/history"
 	"github.com/FGasper/mongo-speedcam/resumetoken"
+	"github.com/mongodb-labs/migration-tools/humantools"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func _runChangeStream(ctx context.Context, connstr string, interval time.Duration) error {
@@ -88,8 +90,6 @@ func _runChangeStream(ctx context.Context, connstr string, interval time.Duratio
 		fullEventName[eventName[:1]] = eventName
 	}
 
-	var minUnixSecs, maxUnixSecs uint32
-
 cursorLoop:
 	for {
 		if cursor.IsFinished() {
@@ -102,12 +102,6 @@ cursorLoop:
 			if time.Unix(int64(t), 0).After(startTime) {
 				break cursorLoop
 			}
-
-			if minUnixSecs == 0 {
-				minUnixSecs = t
-			}
-
-			maxUnixSecs = t
 
 			op := event.Lookup("op").StringValue()
 
@@ -138,17 +132,16 @@ cursorLoop:
 		}
 	}
 
-	delta := time.Duration(1+maxUnixSecs-minUnixSecs) * time.Second
-
-	displayTable(eventCountsByType, eventSizesByType, delta)
+	displayTable(eventCountsByType, eventSizesByType, interval)
 
 	return nil
 }
 
-func _runChangeStreamLoop(
+func _runTailChangeStream(
 	ctx context.Context,
 	connstr string,
 	window, reportInterval time.Duration,
+	updateLookup bool,
 ) error {
 	client, err := getClient(connstr)
 	if err != nil {
@@ -162,12 +155,15 @@ func _runChangeStreamLoop(
 
 	sctx := mongo.NewSessionContext(ctx, sess)
 
+	tsSpeedcam := NewTimestampSpeedcam(int(window.Seconds()))
+
 	cs, err := client.Watch(
 		sctx,
 		mongo.Pipeline{
 			{{"$project", bson.D{
 				{"_id", 1},
 				{"clusterTime", 1},
+				{"fullDocument", 1},
 				{"op", agg.Cond{
 					If:   agg.In("$operationType", eventsToTruncate...),
 					Then: agg.SubstrBytes{"$operationType", 0, 1},
@@ -176,6 +172,9 @@ func _runChangeStreamLoop(
 				{"size", agg.BSONSize("$$ROOT")},
 			}}},
 		},
+		options.ChangeStream().SetFullDocument(
+			lo.Ternary(updateLookup, options.UpdateLookup, options.Default),
+		),
 	)
 	if err != nil {
 		return fmt.Errorf("opening change stream: %w", err)
@@ -188,19 +187,25 @@ func _runChangeStreamLoop(
 
 	var changeStreamLag atomic.Pointer[time.Duration]
 
+	startTime := time.Now()
+
 	go func() {
 		for {
 			time.Sleep(reportInterval)
 
-			totalStats, _, curStatsInterval := tallyEventsHistory(eventsHistory)
+			totalStats, _, _ := tallyEventsHistory(eventsHistory)
 
-			if curStatsInterval == 0 {
-				fmt.Printf("(Can’t compute change stream lag with no interval …)\n")
-			} else {
-				displayTable(totalStats.counts, totalStats.sizes, curStatsInterval)
+			averagePeriod := min(window, time.Since(startTime))
 
-				fmt.Printf("Change stream lag: %s\n", lo.FromPtr(changeStreamLag.Load()))
-			}
+			displayTable(totalStats.counts, totalStats.sizes, averagePeriod)
+
+			eventsPerSec := lo.Mean(tsSpeedcam.GetHistory())
+
+			fmt.Printf(
+				"Change stream lag: %s (%s ops/sec seen on source)\n",
+				lo.FromPtr(changeStreamLag.Load()),
+				humantools.FmtReal(eventsPerSec),
+			)
 		}
 	}()
 
@@ -231,9 +236,11 @@ func _runChangeStreamLoop(
 
 		sessTS, err := GetClusterTimeFromSession(sess)
 		if err != nil {
-
+			fmt.Printf("------ getting cluster time from session: %s\n", err)
 		} else {
 			eventT, _ := cs.Current.Lookup("clusterTime").Timestamp()
+
+			tsSpeedcam.Add(eventT)
 
 			lagSecs := int64(sessTS.T) - int64(eventT)
 			changeStreamLag.Store(lo.ToPtr(time.Duration(lagSecs) * time.Second))

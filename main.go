@@ -103,6 +103,11 @@ func main() {
 				Flags: []cli.Flag{
 					&durationFlag,
 					&windowFlag,
+					&cli.BoolFlag{
+						Name:    "updateLookup",
+						Aliases: sliceOf("ul"),
+						Usage:   "fetch full documents with update events",
+					},
 				},
 				Action: func(ctx context.Context, c *cli.Command) error {
 					uri, err := getURI(c)
@@ -110,7 +115,13 @@ func main() {
 						return err
 					}
 
-					return _runChangeStreamLoop(ctx, uri, c.Duration(windowFlag.Name), c.Duration(durationFlag.Name))
+					return _runTailChangeStream(
+						ctx,
+						uri,
+						c.Duration(windowFlag.Name),
+						c.Duration(durationFlag.Name),
+						c.Bool("updateLookup"),
+					)
 				},
 			},
 			{
