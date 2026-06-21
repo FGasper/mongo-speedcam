@@ -199,7 +199,12 @@ func _runTailChangeStream(
 
 			displayTable(totalStats.counts, totalStats.sizes, averagePeriod)
 
-			eventsPerSec := lo.Mean(tsSpeedcam.GetHistory())
+			perSecEventCounts := tsSpeedcam.GetHistory()
+			if len(perSecEventCounts) > 0 {
+				// drop current second, which may be incomplete
+				perSecEventCounts = perSecEventCounts[:len(perSecEventCounts)-1]
+			}
+			eventsPerSec := lo.Mean(perSecEventCounts)
 
 			fmt.Printf(
 				"Change stream lag: %s (%s ops/sec seen on source)\n",
