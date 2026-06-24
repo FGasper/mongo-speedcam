@@ -144,6 +144,7 @@ func _runTailChangeStream(
 	connstr string,
 	window, reportInterval time.Duration,
 	updateLookup bool,
+	streams uint8,
 ) error {
 	client, err := getClient(connstr)
 	if err != nil {
@@ -163,7 +164,7 @@ func _runTailChangeStream(
 		sctx,
 		client,
 		changestream.Options{
-			Streams: 6,
+			Streams: int(streams),
 			Pipeline: mongo.Pipeline{
 				{{"$project", bson.D{
 					{"_id", 1},

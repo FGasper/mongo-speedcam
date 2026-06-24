@@ -108,6 +108,12 @@ func main() {
 						Aliases: sliceOf("ul"),
 						Usage:   "fetch full documents with update events",
 					},
+					&cli.Uint8Flag{
+						Name:    "streams",
+						Aliases: sliceOf("s"),
+						Usage:   "number of parallel change streams to open",
+						Value:   6,
+					},
 				},
 				Action: func(ctx context.Context, c *cli.Command) error {
 					uri, err := getURI(c)
@@ -121,6 +127,7 @@ func main() {
 						c.Duration(windowFlag.Name),
 						c.Duration(durationFlag.Name),
 						c.Bool("updateLookup"),
+						c.Uint8("streams"),
 					)
 				},
 			},
