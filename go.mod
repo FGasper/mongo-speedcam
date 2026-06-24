@@ -4,10 +4,10 @@ go 1.25.7
 
 require (
 	github.com/dustin/go-humanize v1.0.1
-	github.com/mongodb-labs/migration-tools v0.0.0-20260624034656-c22c8456c835
+	github.com/mongodb-labs/migration-tools v0.0.0-20260624042043-faf6f2d30dd8
 	github.com/olekukonko/tablewriter v1.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/samber/lo v1.52.0
+	github.com/samber/lo v1.53.0
 	github.com/urfave/cli/v3 v3.4.1
 	go.mongodb.org/mongo-driver/v2 v2.7.0
 	golang.org/x/exp v0.0.0-20260211191109-2735e65f0518

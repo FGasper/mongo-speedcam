@@ -159,10 +159,11 @@ func _runTailChangeStream(
 
 	tsSpeedcam := NewTimestampSpeedcam(int(window.Seconds()))
 
-	cs := changestream.NewParallel(
+	cs, err := changestream.NewParallel(
 		sctx,
 		client,
 		changestream.Options{
+			Streams: 6,
 			Pipeline: mongo.Pipeline{
 				{{"$project", bson.D{
 					{"_id", 1},
@@ -181,6 +182,10 @@ func _runTailChangeStream(
 			),
 		},
 	)
+	if err != nil {
+		return fmt.Errorf("open change stream: %w", err)
+	}
+
 	defer cs.Close()
 
 	fmt.Printf("Listening for change events. Stats showing every %s …\n", reportInterval)

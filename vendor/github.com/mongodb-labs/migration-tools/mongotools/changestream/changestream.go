@@ -58,9 +58,13 @@ func NewParallel(
 	ctxIn context.Context,
 	watcher Watcher,
 	opts Options,
-) *ParallelChangeStream {
+) (*ParallelChangeStream, error) {
+	if opts.Streams <= 0 {
+		return nil, fmt.Errorf("streams (%d) must be positive", opts.Streams)
+	}
+
 	createPipeline := func(threadNum int) mongo.Pipeline {
-		return append(
+		return lo.Concat(
 			mongo.Pipeline{
 				{
 					{"$match", bson.D{
@@ -81,6 +85,9 @@ func NewParallel(
 						}},
 					}},
 				},
+			},
+			opts.Pipeline,
+			mongo.Pipeline{
 				{
 					{"$addFields", bson.D{
 						{tokenKeyStringField, bson.D{
@@ -91,7 +98,6 @@ func NewParallel(
 					}},
 				},
 			},
-			opts.Pipeline...,
 		)
 	}
 
@@ -264,6 +270,11 @@ func (pcs *ParallelChangeStream) Next(ctx context.Context) bool {
 		pcs.nextErr = fmt.Errorf("remove token key string field from change event for thread %d: %w", nextChan, err)
 		pcs.canceler(pcs.nextErr)
 		return false
+	}
+
+	if sess := mongo.SessionFromContext(ctx); sess != nil {
+		sess.AdvanceOperationTime(&pcs.curChanBatch[nextChan].OperationTime)
+		sess.AdvanceClusterTime(pcs.curChanBatch[nextChan].ClusterTime)
 	}
 
 	pcs.curChanBatch[nextChan].Events = pcs.curChanBatch[nextChan].Events[1:]
