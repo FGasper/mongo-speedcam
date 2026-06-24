@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"sync"
 	"sync/atomic"
 
 	"github.com/mongodb-labs/migration-tools/bsontools"
@@ -131,8 +130,6 @@ func NewParallel(
 		)
 	}
 
-	wg := &sync.WaitGroup{}
-
 	errFuture, errSetter := future.New[error]()
 	errIsSet := &atomic.Bool{}
 	setErr := func(err error) {
@@ -162,7 +159,7 @@ func NewParallel(
 		curChan := make(chan eventsBatch, 10)
 		channels[threadNum] = curChan
 
-		wg.Go(func() {
+		go func(threadNum int) {
 			defer close(curChan)
 
 			pl := createPipeline(threadNum)
@@ -227,7 +224,7 @@ func NewParallel(
 					events = events[:0]
 				}
 			}
-		})
+		}(threadNum)
 	}
 
 	return &ParallelChangeStream{
