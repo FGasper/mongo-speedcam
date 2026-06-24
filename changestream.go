@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/FGasper/mongo-speedcam/agg"
+	"github.com/FGasper/mongo-speedcam/changestream"
 	"github.com/FGasper/mongo-speedcam/cursor"
 	"github.com/FGasper/mongo-speedcam/history"
 	"github.com/FGasper/mongo-speedcam/resumetoken"
 	"github.com/mongodb-labs/migration-tools/humantools"
-	"github.com/mongodb-labs/migration-tools/mongotools/changestream"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
