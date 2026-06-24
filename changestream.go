@@ -231,7 +231,18 @@ func _runTailChangeStream(
 	initMap(&curEventStats.counts)
 	initMap(&curEventStats.sizes)
 
-	for cs.Next(sctx) {
+	for {
+		if !cs.TryNext(sctx) {
+			if cs.Err() != nil {
+				return fmt.Errorf("reading change stream: %w", cs.Err())
+			}
+
+			// If we got an empty batch, then assume no lag.
+			changeStreamLag.Store(lo.ToPtr(time.Duration(0)))
+
+			continue
+		}
+
 		op := cs.Current().Lookup("op").StringValue()
 
 		if fullOp, isShortened := fullEventName[op]; isShortened {
@@ -262,9 +273,4 @@ func _runTailChangeStream(
 			changeStreamLag.Store(lo.ToPtr(time.Duration(lagSecs) * time.Second))
 		}
 	}
-	if cs.Err() != nil {
-		return fmt.Errorf("reading change stream: %w", cs.Err())
-	}
-
-	return fmt.Errorf("unexpected end of change stream")
 }
