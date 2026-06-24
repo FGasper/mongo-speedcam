@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"math/rand/v2"
 	"sync/atomic"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/FGasper/mongo-speedcam/history"
 	"github.com/FGasper/mongo-speedcam/resumetoken"
 	"github.com/mongodb-labs/migration-tools/humantools"
+	"github.com/mongodb-labs/migration-tools/mongotools/changestream"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -157,29 +159,29 @@ func _runTailChangeStream(
 
 	tsSpeedcam := NewTimestampSpeedcam(int(window.Seconds()))
 
-	cs, err := client.Watch(
+	cs := changestream.NewParallel(
 		sctx,
-		mongo.Pipeline{
-			{{"$project", bson.D{
-				{"_id", 1},
-				{"clusterTime", 1},
-				{"fullDocument", 1},
-				{"op", agg.Cond{
-					If:   agg.In("$operationType", eventsToTruncate...),
-					Then: agg.SubstrBytes{"$operationType", 0, 1},
-					Else: "$operationType",
-				}},
-				{"size", agg.BSONSize("$$ROOT")},
-			}}},
+		client,
+		changestream.Options{
+			Pipeline: mongo.Pipeline{
+				{{"$project", bson.D{
+					{"_id", 1},
+					{"clusterTime", 1},
+					{"fullDocument", 1},
+					{"op", agg.Cond{
+						If:   agg.In("$operationType", eventsToTruncate...),
+						Then: agg.SubstrBytes{"$operationType", 0, 1},
+						Else: "$operationType",
+					}},
+					{"size", agg.BSONSize("$$ROOT")},
+				}}},
+			},
+			Options: options.ChangeStream().SetFullDocument(
+				lo.Ternary(updateLookup, options.UpdateLookup, options.Default),
+			),
 		},
-		options.ChangeStream().SetFullDocument(
-			lo.Ternary(updateLookup, options.UpdateLookup, options.Default),
-		),
 	)
-	if err != nil {
-		return fmt.Errorf("opening change stream: %w", err)
-	}
-	defer cs.Close(sctx)
+	defer cs.Close()
 
 	fmt.Printf("Listening for change events. Stats showing every %s …\n", reportInterval)
 
@@ -224,16 +226,19 @@ func _runTailChangeStream(
 	initMap(&curEventStats.sizes)
 
 	for cs.Next(sctx) {
-		op := cs.Current.Lookup("op").StringValue()
+		op := cs.Current().Lookup("op").StringValue()
 
 		if fullOp, isShortened := fullEventName[op]; isShortened {
 			op = fullOp
 		}
 
 		curEventStats.counts[op]++
-		curEventStats.sizes[op] += int(cs.Current.Lookup("size").AsInt64())
+		curEventStats.sizes[op] += int(cs.Current().Lookup("size").AsInt64())
 
-		if cs.RemainingBatchLength() == 0 {
+		// Every 100 events, snapshot the current stats and reset the counters.
+		// This lets us keep a history of event counts and sizes over time
+		// without unbounded memory growth.
+		if rand.Float64() < 0.01 {
 			eventsHistory.Add(curEventStats)
 			initMap(&curEventStats.counts)
 			initMap(&curEventStats.sizes)
@@ -243,7 +248,7 @@ func _runTailChangeStream(
 		if err != nil {
 			fmt.Printf("------ getting cluster time from session: %s\n", err)
 		} else {
-			eventT, _ := cs.Current.Lookup("clusterTime").Timestamp()
+			eventT, _ := cs.Current().Lookup("clusterTime").Timestamp()
 
 			tsSpeedcam.Add(eventT)
 
