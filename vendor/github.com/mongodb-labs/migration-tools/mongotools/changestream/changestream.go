@@ -205,7 +205,7 @@ func NewParallel(
 		curChanBatch: make([]EventsBatch, opts.Streams),
 		errFuture:    errFuture,
 		canceler:     canceler,
-	}
+	}, nil
 }
 
 type ParallelChangeStream struct {

@@ -4,7 +4,7 @@ go 1.25.7
 
 require (
 	github.com/dustin/go-humanize v1.0.1
-	github.com/mongodb-labs/migration-tools v0.0.0-20260624042043-faf6f2d30dd8
+	github.com/mongodb-labs/migration-tools v0.0.0-20260624042344-9580530147d0
 	github.com/olekukonko/tablewriter v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/samber/lo v1.53.0
