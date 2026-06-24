@@ -244,6 +244,13 @@ func _runTailChangeStream(
 			initMap(&curEventStats.counts)
 			initMap(&curEventStats.sizes)
 
+			sessTS, err := GetClusterTimeFromSession(sess)
+			if err != nil {
+				fmt.Printf("------ getting cluster time from session: %s\n", err)
+			} else {
+				tsSpeedcam.Add(sessTS.T, 0)
+			}
+
 			continue
 		}
 
@@ -271,7 +278,7 @@ func _runTailChangeStream(
 		} else {
 			eventT, _ := cs.Current().Lookup("clusterTime").Timestamp()
 
-			tsSpeedcam.Add(eventT)
+			tsSpeedcam.Add(eventT, 1)
 
 			lagSecs := int64(sessTS.T) - int64(eventT)
 			changeStreamLag.Store(lo.ToPtr(time.Duration(lagSecs) * time.Second))

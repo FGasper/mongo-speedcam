@@ -24,7 +24,7 @@ func NewTimestampSpeedcam(historySize int) *TimestampSpeedcam {
 	}
 }
 
-func (s *TimestampSpeedcam) Add(ts uint32) {
+func (s *TimestampSpeedcam) Add(ts uint32, count int) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -37,7 +37,7 @@ func (s *TimestampSpeedcam) Add(ts uint32) {
 
 	switch {
 	case ts == s.currentSec:
-		s.count++
+		s.count += count
 	case ts > s.currentSec:
 		if s.currentSec != 0 {
 			for range ts - s.currentSec - 1 {
@@ -48,7 +48,7 @@ func (s *TimestampSpeedcam) Add(ts uint32) {
 		s.append(s.count)
 
 		s.currentSec = ts
-		s.count = 1
+		s.count = count
 	default:
 		panic("unreachable")
 	}
