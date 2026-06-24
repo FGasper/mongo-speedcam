@@ -240,6 +240,10 @@ func _runTailChangeStream(
 			// If we got an empty batch, then assume no lag.
 			changeStreamLag.Store(lo.ToPtr(time.Duration(0)))
 
+			eventsHistory.Add(curEventStats)
+			initMap(&curEventStats.counts)
+			initMap(&curEventStats.sizes)
+
 			continue
 		}
 

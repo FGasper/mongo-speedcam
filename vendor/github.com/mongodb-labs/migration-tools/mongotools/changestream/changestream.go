@@ -75,7 +75,7 @@ func NewParallel(
 									{"$mod", bson.A{
 										bson.D{{"$toHashedIndexKey", bson.D{
 											{"$_internalKeyStringValue", bson.D{
-												{"input", "$documentKey._id"},
+												{"input", "$_id"},
 											}},
 										}}},
 										opts.Streams,
