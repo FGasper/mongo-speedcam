@@ -244,11 +244,10 @@ func _runTailChangeStream(
 			initMap(&curEventStats.counts)
 			initMap(&curEventStats.sizes)
 
-			sessTS, err := GetClusterTimeFromSession(sess)
-			if err != nil {
-				fmt.Printf("------ getting cluster time from session: %s\n", err)
-			} else {
-				tsSpeedcam.Add(sessTS.T, 0)
+			rt := resumetoken.New(cs.ResumeToken())
+			if len(rt.Raw()) > 0 {
+				ts := lo.Must(rt.Timestamp())
+				tsSpeedcam.Add(ts.T, 0)
 			}
 
 			continue
