@@ -29,6 +29,10 @@ github.com/mongodb-labs/migration-tools v0.0.0-20260624044934-44f848124b8d h1:r8
 github.com/mongodb-labs/migration-tools v0.0.0-20260624044934-44f848124b8d/go.mod h1:CyxpQlg1ljPZjer/NGz2mpAOc1yDUD5RHzIfdEEV5Iw=
 github.com/mongodb-labs/migration-tools v0.0.0-20260624051002-ec23313e34b3 h1:J1DL6MAcPwNuYoC1H43s2EtNkztbc/6qAqvwiyfYoz4=
 github.com/mongodb-labs/migration-tools v0.0.0-20260624051002-ec23313e34b3/go.mod h1:CyxpQlg1ljPZjer/NGz2mpAOc1yDUD5RHzIfdEEV5Iw=
+github.com/mongodb-labs/migration-tools v0.0.0-20260625191144-f5f93bb27af4 h1:6Bfb4SbV+jybth/jkg2DM8K2K7mlA6Bims+AysxfO90=
+github.com/mongodb-labs/migration-tools v0.0.0-20260625191144-f5f93bb27af4/go.mod h1:CyxpQlg1ljPZjer/NGz2mpAOc1yDUD5RHzIfdEEV5Iw=
+github.com/mongodb-labs/migration-tools v0.0.0-20260625191747-6f5e2577da3e h1:HYi/D7Wq6i3m4HNjwx5hTOQNzyWp8bbNQjDMA7yX1Mg=
+github.com/mongodb-labs/migration-tools v0.0.0-20260625191747-6f5e2577da3e/go.mod h1:CyxpQlg1ljPZjer/NGz2mpAOc1yDUD5RHzIfdEEV5Iw=
 github.com/olekukonko/errors v1.1.0 h1:RNuGIh15QdDenh+hNvKrJkmxxjV4hcS50Db478Ou5sM=
 github.com/olekukonko/errors v1.1.0/go.mod h1:ppzxA5jBKcO1vIpCXQ9ZqgDh8iwODz6OXIGKU8r5m4Y=
 github.com/olekukonko/ll v0.0.9 h1:Y+1YqDfVkqMWuEQMclsF9HUR5+a82+dxJuL1HHSRpxI=

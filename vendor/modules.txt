@@ -31,7 +31,7 @@ github.com/mattn/go-isatty
 # github.com/mattn/go-runewidth v0.0.16
 ## explicit; go 1.9
 github.com/mattn/go-runewidth
-# github.com/mongodb-labs/migration-tools v0.0.0-20260624051002-ec23313e34b3
+# github.com/mongodb-labs/migration-tools v0.0.0-20260625191747-6f5e2577da3e
 ## explicit; go 1.25.7
 github.com/mongodb-labs/migration-tools/bsontools
 github.com/mongodb-labs/migration-tools/contextplus
